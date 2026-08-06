@@ -1,0 +1,18 @@
+generator:
+  _target_: src.generators.VKPlatePSTD
+  fs: 44100
+  dur: 5
+  kappa: 8
+  sigma0: 1.3
+  sigma1: 1e-4
+  xe: 0.17
+  ye: 0.42
+  xo: 0.64
+  yo: 0.79
+  ratio: 1.1
+  fmax: 17e3
+excitation:
+  exc_amp: 2e6
+  exc_dur: 2e-3
+  exc_st: 0
+  exc_type: 2

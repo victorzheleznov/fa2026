@@ -1,0 +1,2 @@
+EPS = 1e-12
+AUDIO_RATE = 44100

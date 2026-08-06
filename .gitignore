@@ -1,0 +1,12 @@
+.vscode/
+.venv/
+__pycache__/
+out/
+.env
+*.sh
+profile*.txt
+*.lprof
+*.wav
+*.ipynb
+*.html
+*.pdf
