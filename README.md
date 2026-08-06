@@ -17,5 +17,39 @@
 </div>
 
 
-> [!NOTE]
-> This repository is a work in progress. The source code will be made avaliable at a later time. To listen to sound examples, please use the button above.
+
+## Repository Contents
+
+`cfg/plate.yaml` is a configuration file for a plate.
+
+`notebooks/plot_fa2026.py` is a notebook for reproducing results in the paper.
+
+`out/2026_07_16_fa2026/2026_07_16_plot_fa2026.html` is an archived notebook used for results in the paper.
+
+`src/` includes source code for plate models and other utils.
+
+`run_generator.py` is a script used for simulation.
+
+
+
+## Instructions
+
+[Python 3.11.9](https://www.python.org/downloads/release/python-3119/) was used for simulations.
+The required packages are provided in the `requirements.txt` file. To setup the environment, use:
+```
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+To reproduce results in the paper, run the `plot_fa2026.py` notebook in a [VSCode's Python Interactive window](https://code.visualstudio.com/docs/python/jupyter-support-py). The result should match the archived `2026_07_16_plot_fa2026.html` notebook which can be opened in any web browser.
+
+To run plate models for other simulation parameters, use the `run_generator.py` script by overriding values in the `plate.yaml` configuration file using the [Hydra interface](https://hydra.cc/docs/tutorials/basic/your_first_app/config_file/). A plate model from the paper with a stiffness parameter `kappa=60` can be simulated as:
+```
+python -m run_generator generator.kappa=60
+```
+Output for a linear plate model can be obtained as:
+```
+python -m run_generator generator.kappa=60 generator._target_=src.generators.LinearPlateModal
+```
+Simulation results will be saved within the `out/` folder.
