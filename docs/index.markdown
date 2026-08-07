@@ -91,6 +91,9 @@ classes:
   <a href="https://github.com/victorzheleznov/fa2026" class="btn btn--primary btn--small" target="_blank" rel="noopener noreferrer">
     Code
   </a>
+  <a href="https://arxiv.org/abs/2608.06139" class="btn btn--primary btn--small" target="_blank" rel="noopener noreferrer">
+    arXiv
+  </a>
 </div>
 
 

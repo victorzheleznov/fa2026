@@ -13,6 +13,7 @@
 <div align="center">
 
   [![Sound Examples](https://img.shields.io/badge/Sound_Examples-blue)](https://victorzheleznov.github.io/fa2026/)
+  [![arXiv](https://img.shields.io/badge/arXiv-2608.06139-b31b1b.svg)](https://arxiv.org/abs/2608.06139)
   
 </div>
 
