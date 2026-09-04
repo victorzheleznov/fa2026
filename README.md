@@ -25,7 +25,7 @@
 
 `notebooks/plot_fa2026.py` is a notebook for reproducing results in the paper.
 
-`out/2026_07_16_fa2026/2026_07_16_plot_fa2026.html` is an archived notebook used for results in the paper.
+`out/` includes archived notebooks used for results in the paper and the presentation.
 
 `src/` includes source code for plate models and other utils.
 
@@ -43,14 +43,22 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-To reproduce results in the paper, run the `plot_fa2026.py` notebook in a [VSCode's Python Interactive window](https://code.visualstudio.com/docs/python/jupyter-support-py). The result should match the archived `2026_07_16_plot_fa2026.html` notebook which can be opened in any web browser.
+To reproduce results in the paper, run the `plot_fa2026.py` notebook in a [VSCode's Python Interactive window](https://code.visualstudio.com/docs/python/jupyter-support-py). The result should match archived notebooks in the `out/` folder:
+- `2026_07_16_plot_fa2026.html` — original notebook used for results in the paper;
+- `2026_09_02_plot_fa2026.html` — notebook with additional simulation time comparison to modal synthesis used in the presentation.
 
-To run plate models for other simulation parameters, use the `run_generator.py` script by overriding values in the `plate.yaml` configuration file using the [Hydra interface](https://hydra.cc/docs/tutorials/basic/your_first_app/config_file/). A plate model from the paper with a stiffness parameter `kappa=60` can be simulated as:
+Archived notebooks can be opened in any web browser.
+
+To run plate models for other simulation parameters, use the `run_generator.py` script by overriding values in the `plate.yaml` configuration file using the [Hydra interface](https://hydra.cc/docs/tutorials/basic/your_first_app/config_file/). A plate model from the paper with a stiffness parameter `kappa=30` can be simulated as:
 ```
-python -m run_generator generator.kappa=60
+python -m run_generator generator.kappa=30
 ```
 Output for a linear plate model can be obtained as:
 ```
-python -m run_generator generator.kappa=60 generator._target_=src.generators.LinearPlateModal
+python -m run_generator generator.kappa=30 generator._target_=src.generators.LinearPlateModal
+```
+Output for a reference plate model using modal approach can be obtained as:
+```
+python -m run_generator generator.kappa=30 generator._target_=src.generators.VKPlateModal
 ```
 Simulation results will be saved within the `out/` folder.
