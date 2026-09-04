@@ -192,3 +192,27 @@ Below are some additional simulations with drift regulation, along with used sim
 </tbody>
 </table>
 </div>
+
+
+
+### Comparison to Modal Synthesis
+
+Figure below demonstrates that simulation time of the pseudospectral method scales favourably with increasing number of modes compared to the modal approach. To fully evaluate real-time capability of the models, an optimised C++ implementation needs to be used. Outputs from both models sound the same.
+
+<div class="table-container" style="margin-bottom:1cm;">
+<table>
+<thead>
+<tr><th>Modal</th><th>Pseudospectral</th></tr>
+</thead>
+<tbody>
+<tr><td><audio src="audio/plate_modal.wav" controls></audio></td><td><audio src="audio/plate_pstd.wav" controls></audio></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="media-container">
+  <img src="img/time_pres.png"/>
+  <div class="caption">
+    Simulation time for 1 second of output audio at 44.1 kHz for increasing number of modes (Python, CPU).
+  </div>
+</div>
