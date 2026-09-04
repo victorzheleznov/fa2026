@@ -1,4 +1,6 @@
 import numpy as np
+import scipy.sparse as sp
+from numba import jit
 from scipy.fft import dctn, dstn, idctn, idstn
 
 from src.utils.damping import calc_damping
@@ -480,3 +482,112 @@ class VKPlatePSTD(LinearPlateModal):
     @property
     def u_max(self):
         return self._u_max
+
+
+class VKPlateModal(VKPlatePSTD):
+    def __init__(
+            self,
+            fs: int,
+            dur: float,
+            kappa: float,
+            sigma0: float,
+            sigma1: float,
+            xe: float,
+            ye: float,
+            xo: float,
+            yo: float,
+            ratio: float,
+            exc_factor: float = 1.0,
+            out_factor: float = 1.0,
+            fmax: float | None = None,
+            use_exact: bool = True,
+            lambda0: float = 1e3,
+            norm_type: int = 1,
+            os_factor: float = 1.5
+        ):
+        super().__init__(fs, dur, kappa, sigma0, sigma1, xe, ye, xo, yo, ratio, exc_factor, out_factor, fmax, use_exact, lambda0, norm_type, os_factor)
+
+        # calculate tensor
+        tmp = self._calc_tensor()
+        self._tensor = tmp.reshape((self._num_modes, -1), order="C").tocsr()
+        self._tensor_ext = (tmp.T).reshape((self._num_modes_ext, -1), order="C").tocsr()
+
+        # allocate arrays
+        self._q_q = np.zeros((self._num_modes, self._num_modes,), dtype=np.float64)
+        self._q_xi = np.zeros((self._num_modes, self._num_modes_ext,), dtype=np.float64)
+
+    @staticmethod
+    @jit(nopython=True, cache=True)
+    def _calc_coupling(
+            mx: np.ndarray[tuple[int], int],
+            my: np.ndarray[tuple[int], int],
+            mx_ext: np.ndarray[tuple[int], int],
+            my_ext: np.ndarray[tuple[int], int],
+            sign_x: int,
+            sign_y: int
+        ) -> np.ndarray[tuple[int], int]:
+        num_modes = mx.shape[0]
+        num_modes_ext = mx_ext.shape[0]
+        coords = np.zeros((3, num_modes**2), dtype=np.int64)
+        nnz = 0
+        for i in range(num_modes):
+            for j in range(num_modes):
+                for k in range(num_modes_ext):
+                    if (abs(mx[i] + sign_x * mx[j]) == mx_ext[k]) and (abs(my[i] + sign_y * my[j]) == my_ext[k]):
+                        coords[0, nnz] = i
+                        coords[1, nnz] = j
+                        coords[2, nnz] = k
+                        nnz += 1
+        return coords[:, :nnz]
+
+    def _calc_term(self, sign_x : int, sign_y: int) -> sp.coo_array[tuple[int, int, int], float]:
+        assert (sign_x == 1) or (sign_x == -1)
+        assert (sign_y == 1) or (sign_y == -1)
+        sign = sign_x * sign_y
+
+        coords = self._calc_coupling(self._mx, self._my, self._mx_ext, self._my_ext, sign_x, sign_y)
+        i, j, k = coords
+
+        data = sign * (self._mx[i] * self._my[j] - sign * self._mx[j] * self._my[i])**2
+        data = data.astype(np.float64)
+
+        mask_x = (self._mx_ext[k] == 0)
+        data[mask_x] *= np.sqrt(2)
+
+        mask_y = (self._my_ext[k] == 0)
+        data[mask_y] *= np.sqrt(2)
+
+        tmp = sp.coo_array((data, coords), shape=(self._num_modes, self._num_modes, self._num_modes_ext))
+        tmp.eliminate_zeros()
+        return tmp
+
+    def _calc_tensor(self) -> sp.coo_array[tuple[int, int, int], float]:
+        tensor = self._calc_term(1, 1) + self._calc_term(-1, -1) + self._calc_term(1, -1) + self._calc_term(-1, 1)
+        tensor *= 0.5 * np.pi**4
+        return tensor
+
+    def _calc_potential(
+            self,
+            q: np.ndarray[tuple[int], float],
+            calc_grad: bool = True
+        ) -> tuple[float, np.ndarray[tuple[int], float] | None]:
+        # calculate Airy function
+        np.outer(q, q, out=self._q_q)
+        xi = np.negative(
+            self._tensor_ext.dot(self._q_q.ravel(order="C"))
+        ) / self._beta_ext**4
+
+        # calculate potential
+        xi_d = self._beta_ext**2 * xi
+        V = 0.25 * xi_d.dot(xi_d)
+
+        if calc_grad:
+            # calculate gradient
+            np.outer(q, xi, out=self._q_xi)
+            grad_V = np.negative(
+                self._tensor.dot(self._q_xi.ravel(order="C"))
+            )
+        else:
+            grad_V = None
+
+        return V, grad_V

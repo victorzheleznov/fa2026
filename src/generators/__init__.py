@@ -1,6 +1,7 @@
-from src.generators.plate import LinearPlateModal, VKPlatePSTD
+from src.generators.plate import LinearPlateModal, VKPlateModal, VKPlatePSTD
 
 __all__ = [
     "LinearPlateModal",
-    "VKPlatePSTD"
+    "VKPlatePSTD",
+    "VKPlateModal"
 ]

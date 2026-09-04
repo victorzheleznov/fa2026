@@ -14,10 +14,12 @@ sys.path.append("../")
 # %%
 import copy
 from pathlib import Path
+from time import time
 
 import numpy as np
 
-from src.generators import VKPlatePSTD
+from src.generators.plate import Plate
+from src.generators import VKPlatePSTD, VKPlateModal
 from src.utils.plot import plot_spec, plot_with_eps, plot_against_time, num2str
 from src.utils.sav import calc_psi
 from src.utils.const import AUDIO_RATE
@@ -135,6 +137,7 @@ axs[1].set_yticks([-1e-15, 0, 1e-15])
 axs[1].ticklabel_format(style="sci", axis="y", scilimits=(0, 0), useMathText=True)
 axs[1].set_xlabel("Time [ms]")
 save_fig(out_dir, "energy", fig, width=FA2026_COLUMN_WIDTH, height=(0.55 * FA2026_COLUMN_WIDTH), dpi=300, format="pdf")
+save_fig(out_dir, "energy_pres", fig, width=4, height=2, dpi=600, format="png")
 
 # %% [markdown]
 # ## Drift Control
@@ -184,6 +187,7 @@ axs.set_ylabel("Drift", labelpad=0)
 axs.grid()
 axs.legend(loc="upper center", bbox_to_anchor=(0.5, 1.2), ncols=2, fontsize="small")
 save_fig(out_dir, "drift", fig, width=FA2026_COLUMN_WIDTH, height=(0.55 * FA2026_COLUMN_WIDTH), dpi=300, format="pdf")
+save_fig(out_dir, "drift_pres", fig, width=4, height=2, dpi=600, format="png")
 
 # %% [markdown]
 # ## Spectrograms
@@ -251,6 +255,23 @@ for i, (exc_amp, lambda0, out) in enumerate(zip(exc_amp_list, lambda0_list, out_
         axs[i].set_ylabel(None)
     axs[i].set_xticks(np.arange(0, plate_kwargs_kappa["dur"]))
 save_fig(out_dir, "spec", fig, width=FA2026_TEXT_WIDTH, height=(0.55 * FA2026_COLUMN_WIDTH), dpi=300, format="pdf")
+
+# %%
+# plot spectrograms for presentation
+plt.style.use(["science", "ieee", "std-colors"])
+fig, axs = plt.subplots(nrows=1, ncols=2, layout="constrained")
+for i, (lambda0, out) in enumerate(zip(lambda0_list[:-3:-1], out_list[:-3:-1])):
+    plot_spec(out, AUDIO_RATE, freq_range=(0, 4e3), axs=axs[i])
+    title = num2str(lambda0, var="\\lambda_0")
+    axs[i].set_title(title, fontsize="small")
+    axs[i].set_yticks([0, 1000, 2000, 3000, 4000], ["0", "1", "2", "3", "4"])
+    if i == 0:
+        axs[0].set_ylabel("Frequency [kHz]")
+    else:
+        axs[i].set_yticklabels([])
+        axs[i].set_ylabel(None)
+    axs[i].set_xticks(np.arange(0, plate_kwargs_kappa["dur"]))
+save_fig(out_dir, "spec_pres", fig, width=4, height=2, dpi=600, format="png")
 
 # %% [markdown]
 ## Additional Examples
@@ -346,4 +367,80 @@ table_str = tabulate(
 )
 print(table_str)
 
+# %% [markdown]
+# ## Comparison to Modal Synthesis
+
 # %%
+# define timing function
+def time_plate(
+        plate_class: type[Plate],
+        plate_kwargs: dict[str, float],
+        exc_kwargs: dict[str, float],
+        freq_range: tuple[float, float] = (0, AUDIO_RATE // 2)
+    ):
+    plate = plate_class(**plate_kwargs)
+    start_time = time()
+    out = plate(**exc_kwargs)
+    elapsed_time = time() - start_time
+    num_modes = plate.num_modes
+
+    print(f"Generator: {plate.__class__.__name__}")
+    print(f"Elapsed time: {elapsed_time} seconds")
+    print(f"Number of modes: {num_modes}")
+
+    ipd.display(ipd.Audio(out, rate=AUDIO_RATE))
+
+    plt.style.use(["default"])
+    fig, _ = plot_spec(out, AUDIO_RATE, freq_range=freq_range)
+    plt.show()
+
+    return elapsed_time, num_modes, out, fig
+
+# %%
+# simulate plate for different stiffness parameters
+kappa_list = [60, 30, 15, 8]
+num_modes_list = []
+elapsed_time_pstd = []
+elapsed_time_modal = []
+for kappa in kappa_list:
+    plate_kwargs_kappa = copy.deepcopy(plate_kwargs)
+    plate_kwargs_kappa.update({"dur": 1, "kappa": kappa})
+
+    elapsed_time, num_modes, _, _ = time_plate(VKPlatePSTD, plate_kwargs_kappa, exc_kwargs)
+    elapsed_time_pstd.append(elapsed_time)
+    num_modes_list.append(num_modes)
+
+    elapsed_time, _, _, _ = time_plate(VKPlateModal, plate_kwargs_kappa, exc_kwargs)
+    elapsed_time_modal.append(elapsed_time)
+
+# %%
+# plot simulation time
+plt.style.use(["science", "ieee", "std-colors"])
+fig, axs = plt.subplots(nrows=1, ncols=1, layout="constrained")
+axs.plot(num_modes_list, elapsed_time_modal, marker=".", label="Modal")
+axs.plot(num_modes_list, elapsed_time_pstd, color="C2", marker="x", label="Pseudospectral")
+axs.set_xscale("log", nonpositive="mask")
+axs.set_yscale("log", nonpositive="mask")
+axs.set_xlabel("Number of modes")
+axs.set_ylabel("Simulation time [sec]")
+axs.set_xticklabels([], minor=True)
+axs.set_xticks([100, 200, 500, 1000], ["100", "200", "500", "1000"])
+axs.grid()
+axs.legend(loc="upper center", bbox_to_anchor=(0.5, 1.2), ncols=2, fontsize="small")
+save_fig(out_dir, "time_pres", fig, width=3, height=2, dpi=600, format="png")
+
+# %%
+# simulate pseudospectral and modal plates for last set of parameters and full duration
+plate_kwargs_kappa.update({"dur": 3})
+
+_, _, out, fig = time_plate(VKPlatePSTD, plate_kwargs_kappa, exc_kwargs)
+name = "plate_pstd"
+write_wav(out_dir / (name + ".wav"), out, AUDIO_RATE, normalise=True, subtype="PCM_24")
+save_fig(out_dir, name, fig, width=(1920 / 300), height=(1440 / 300), dpi=300, format="png")
+
+_, _, out, fig = time_plate(VKPlateModal, plate_kwargs_kappa, exc_kwargs)
+name = "plate_modal"
+write_wav(out_dir / (name + ".wav"), out, AUDIO_RATE, normalise=True, subtype="PCM_24")
+save_fig(out_dir, name, fig, width=(1920 / 300), height=(1440 / 300), dpi=300, format="png")
+
+# %%
